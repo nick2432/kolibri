@@ -8,17 +8,18 @@
     <KRadioButton
       v-model="selected"
       :label="$tr('createFacilityLabel')"
-      :value="Options.NEW"
+      :buttonValue="Options.NEW"
       class="radio-button"
     />
     <KRadioButton
       v-model="selected"
       :label="$tr('importFacilityLabel')"
-      :value="Options.IMPORT"
+      :buttonValue="Options.IMPORT"
       class="radio-button"
     />
     <SelectDeviceModalGroup
       v-if="showSelectAddressModal"
+      :filterByOnMyOwnFacility="false"
       @cancel="showSelectAddressModal = false"
       @submit="handleContinueImport"
     />

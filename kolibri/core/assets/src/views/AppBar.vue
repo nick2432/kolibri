@@ -12,7 +12,7 @@
         :title="title"
         :removeNavIcon="isAppContext && isTouchDevice"
         type="clear"
-        textColor="white"
+        textColor="black"
         class="app-bar"
         :style="{ height: topBarHeight + 'px' }"
         :raised="false"
@@ -24,7 +24,7 @@
         >
           <KIconButton
             icon="menu"
-            :color="$themeTokens.textInverted"
+            :color="$themeTokens.text"
             :ariaLabel="$tr('openNav')"
             @click="$emit('toggleSideNav')"
           />
@@ -56,10 +56,11 @@
           >
             <slot name="app-bar-actions"></slot>
             <span v-if="isLearner">
-              <KIconButton
+              <KIcon
                 ref="pointsButton"
                 icon="pointsActive"
                 :ariaLabel="$tr('pointsAriaLabel')"
+                :color="$themeTokens.primary"
               />
               <div v-if="!windowIsSmall" class="points-description">
                 {{ $formatNumber(totalPoints) }}
@@ -83,7 +84,7 @@
               <KIcon
                 icon="person"
                 :style="{
-                  fill: $themeTokens.textInverted,
+                  fill: $themeTokens.text,
                   height: '24px',
                   width: '24px',
                   margin: '4px',

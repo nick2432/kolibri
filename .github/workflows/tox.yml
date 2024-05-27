@@ -122,11 +122,11 @@ jobs:
   macos:
     name: Python unit tests on Mac OS
     needs: pre_job
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       max-parallel: 5
       matrix:
-        python-version: [3.6]
+        python-version: ['3.10']
 
     steps:
     - uses: actions/checkout@v4

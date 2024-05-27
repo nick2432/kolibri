@@ -22,7 +22,7 @@
         <p>
           {{ $tr('pageDescription') }}
           <KExternalLink
-            v-if="!isMultiFacilitySuperuser && getFacilitySettingsPath()"
+            v-if="!isLearnerOnlyImport && !isMultiFacilitySuperuser && getFacilitySettingsPath()"
             :text="$tr('facilitySettings')"
             :href="getFacilitySettingsPath()"
           />
@@ -70,14 +70,14 @@
           <KRadioButton
             data-test="landingPageButton"
             :label="$tr('learnerAppPageChoice')"
-            :value="landingPageChoices.LEARN"
+            :buttonValue="landingPageChoices.LEARN"
             :currentValue="landingPage"
             @input="handleLandingPageChange"
           />
           <KRadioButton
             data-test="signInPageButton"
             :label="$tr('signInPageChoice')"
-            :value="landingPageChoices.SIGN_IN"
+            :buttonValue="landingPageChoices.SIGN_IN"
             :currentValue="landingPage"
             @input="handleLandingPageChange"
           />
@@ -85,7 +85,7 @@
             <KRadioButton
               data-test="allowGuestAccessButton"
               :label="$tr('allowGuestAccess')"
-              :value="SignInPageOptions.ALLOW_GUEST_ACCESS"
+              :buttonValue="SignInPageOptions.ALLOW_GUEST_ACCESS"
               :currentValue="signInPageOption"
               :disabled="disableSignInPageOptions"
               @input="handleSignInPageChange"
@@ -93,7 +93,7 @@
             <KRadioButton
               data-test="disallowGuestAccessButton"
               :label="$tr('disallowGuestAccess')"
-              :value="SignInPageOptions.DISALLOW_GUEST_ACCESS"
+              :buttonValue="SignInPageOptions.DISALLOW_GUEST_ACCESS"
               :currentValue="signInPageOption"
               :disabled="disableSignInPageOptions"
               @input="handleSignInPageChange"
@@ -101,7 +101,7 @@
             <KRadioButton
               data-test="lockedContentButton"
               :label="$tr('lockedContent')"
-              :value="SignInPageOptions.LOCKED_CONTENT"
+              :buttonValue="SignInPageOptions.LOCKED_CONTENT"
               :currentValue="signInPageOption"
               :disabled="disableSignInPageOptions"
               @input="handleSignInPageChange"
@@ -113,18 +113,18 @@
           <h2>
             <label>{{ $tr('allowDownloadOnMeteredConnection') }}</label>
           </h2>
-          <p class="info-description">
+          <p :class="InfoDescriptionColor">
             {{ $tr('DownloadOnMeteredConnectionDescription') }}
           </p>
           <KRadioButton
             :label="$tr('doNotAllowDownload')"
-            :value="meteredConnectionDownloadOptions.DISALLOW_DOWNLOAD_ON_METERED_CONNECTION"
+            :buttonValue="meteredConnectionDownloadOptions.DISALLOW_DOWNLOAD_ON_METERED_CONNECTION"
             :currentValue="meteredConnectionDownloadOption"
             @input="handleMeteredConnectionDownloadChange"
           />
           <KRadioButton
             :label="$tr('allowDownload')"
-            :value="meteredConnectionDownloadOptions.ALLOW_DOWNLOAD_ON_METERED_CONNECTION"
+            :buttonValue="meteredConnectionDownloadOptions.ALLOW_DOWNLOAD_ON_METERED_CONNECTION"
             :currentValue="meteredConnectionDownloadOption"
             @input="handleMeteredConnectionDownloadChange"
           />
@@ -134,7 +134,7 @@
           <h2>
             {{ $tr('primaryStorage') }}
           </h2>
-          <p class="info-description">
+          <p :class="InfoDescriptionColor">
             {{ $tr('primaryStorageDescription') }}
           </p>
           <p>
@@ -163,7 +163,7 @@
           <h2>
             {{ $tr('secondaryStorage') }}
           </h2>
-          <p v-show="multipleReadOnlyPaths" class="info-description">
+          <p v-show="multipleReadOnlyPaths" :class="InfoDescriptionColor">
             {{ $tr('secondaryStorageDescription') }}
           </p>
           <p v-for="path in secondaryStorageLocations" :key="path.index">
@@ -255,7 +255,7 @@
           <h2>
             {{ $tr('enabledPages') }}
           </h2>
-          <p class="info-description">
+          <p :class="InfoDescriptionColor">
             {{ deviceString('newEnabledPluginsState') }}
           </p>
 
@@ -477,8 +477,13 @@
       };
     },
     computed: {
-      ...mapGetters(['isAppContext', 'isPageLoading', 'snackbarIsVisible']),
+      ...mapGetters(['isAppContext', 'isPageLoading', 'snackbarIsVisible', 'isLearnerOnlyImport']),
       ...mapGetters('deviceInfo', ['isRemoteContent']),
+      InfoDescriptionColor() {
+        return {
+          color: this.$themePalette.grey.v_600,
+        };
+      },
       pageTitle() {
         return this.deviceString('deviceManagementTitle');
       },
@@ -1195,10 +1200,6 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-  }
-
-  .info-description {
-    color: #616161;
   }
 
   input[type='range'] {

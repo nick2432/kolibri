@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const program = require('commander');
 const checkVersion = require('check-node-version');
 const ini = require('ini');
@@ -284,6 +284,10 @@ program
     }
     if (options.watchonly.length) {
       const unwatchedBundles = [];
+      // Watch core for changes if KDS option is provided; all KDS components are linked to core.
+      if (options.requireKdsPath && !options.watchonly.includes('core')) {
+        options.watchonly.push('core');
+      }
       const findModuleName = bundleDatum => {
         return !options.watchonly.some(m => bundleDatum.module_path.includes(m));
       };
@@ -356,7 +360,7 @@ program
       const Minimatch = require('minimatch').Minimatch;
       patternCheck = new Minimatch(options.pattern, {});
     }
-    const glob = require('glob');
+    const glob = require('./glob');
     const { logging, lint, noChange } = require('./lint');
     const chokidar = require('chokidar');
     const watchMode = options.monitor;
@@ -447,7 +451,7 @@ program
     if (!files.length) {
       program.command('compress').help();
     } else {
-      const glob = require('glob');
+      const glob = require('./glob');
       const compressFile = require('./compress');
       Promise.all(
         files.map(file => {

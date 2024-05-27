@@ -30,6 +30,7 @@ from .helpers import provision_device
 from kolibri.core import error_constants
 from kolibri.core.auth.backends import FACILITY_CREDENTIAL_KEY
 from kolibri.core.auth.constants import demographics
+from kolibri.core.device.models import OSUser
 from kolibri.core.device.utils import set_device_settings
 
 # A weird hack because of http://bugs.python.org/issue17866
@@ -682,6 +683,33 @@ class FacilityAPITestCase(APITestCase):
             )
 
 
+def _add_demographic_schema_to_facility(facility):
+    facility.dataset.extra_fields.update(
+        {
+            models.DEMOGRAPHIC_FIELDS_KEY: [
+                {
+                    "id": "status",
+                    "description": "Up or Down",
+                    "enumValues": [
+                        {
+                            "value": "up",
+                            "defaultLabel": "Up",
+                            "translations": [{"language": "en", "message": "Up"}],
+                        },
+                        {
+                            "value": "down",
+                            "defaultLabel": "Down",
+                            "translations": [{"language": "en", "message": "Down"}],
+                        },
+                    ],
+                    "translations": [{"language": "en", "message": "Up or Down"}],
+                }
+            ]
+        }
+    )
+    facility.dataset.save()
+
+
 class UserCreationTestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -777,6 +805,32 @@ class UserCreationTestCase(APITestCase):
         self.assertEqual(response.data[0]["id"], error_constants.MAX_LENGTH)
         self.assertEqual(response.data[0]["metadata"]["field"], "username")
 
+    def test_can_add_extra_demographics_to_facility_user(self):
+        _add_demographic_schema_to_facility(self.facility)
+        data = {
+            "username": "goliath",
+            "password": "davidsucks",
+            "extra_demographics": {"status": "up"},
+        }
+        response = self.client.post(
+            reverse("kolibri:core:facilityuser-list"), data, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["extra_demographics"], {"status": "up"})
+
+    def test_cant_add_invalid_extra_demographics_to_facility_user(self):
+        _add_demographic_schema_to_facility(self.facility)
+        data = {
+            "username": "goliath",
+            "password": "davidsucks",
+            "extra_demographics": {"status": "invalid"},
+        }
+        response = self.client.post(
+            reverse("kolibri:core:facilityuser-list"), data, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data[0]["metadata"]["field"], "extra_demographics")
+
 
 class UserUpdateTestCase(APITestCase):
     @classmethod
@@ -855,6 +909,50 @@ class UserUpdateTestCase(APITestCase):
             ).exists()
         )
 
+    def test_updating_extra_demographics_previously_none(self):
+        _add_demographic_schema_to_facility(self.facility)
+        response = self.client.patch(
+            reverse("kolibri:core:facilityuser-detail", kwargs={"pk": self.user.pk}),
+            {"extra_demographics": {"status": "up"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["extra_demographics"], {"status": "up"})
+
+    def test_updating_extra_demographics_previously_set(self):
+        _add_demographic_schema_to_facility(self.facility)
+        self.user.extra_fields = {"status": "down"}
+        self.user.save()
+        response = self.client.patch(
+            reverse("kolibri:core:facilityuser-detail", kwargs={"pk": self.user.pk}),
+            {"extra_demographics": {"status": "up"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["extra_demographics"], {"status": "up"})
+
+    def test_updating_extra_demographics_previously_none_invalid_value(self):
+        _add_demographic_schema_to_facility(self.facility)
+        response = self.client.patch(
+            reverse("kolibri:core:facilityuser-detail", kwargs={"pk": self.user.pk}),
+            {"extra_demographics": {"status": "invalid"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data[0]["metadata"]["field"], "extra_demographics")
+
+    def test_updating_extra_demographics_previously_set_invalid_value(self):
+        _add_demographic_schema_to_facility(self.facility)
+        self.user.extra_fields = {"status": "down"}
+        self.user.save()
+        response = self.client.patch(
+            reverse("kolibri:core:facilityuser-detail", kwargs={"pk": self.user.pk}),
+            {"extra_demographics": {"status": "invalid"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data[0]["metadata"]["field"], "extra_demographics")
+
 
 class UserDeleteTestCase(APITestCase):
     @classmethod
@@ -921,6 +1019,7 @@ class UserRetrieveTestCase(APITestCase):
                     "birth_year": self.user.birth_year,
                     "is_superuser": False,
                     "roles": [],
+                    "extra_demographics": None,
                 },
                 {
                     "id": self.superuser.id,
@@ -938,6 +1037,7 @@ class UserRetrieveTestCase(APITestCase):
                             "id": self.superuser.roles.first().id,
                         }
                     ],
+                    "extra_demographics": None,
                 },
             ],
         )
@@ -963,6 +1063,7 @@ class UserRetrieveTestCase(APITestCase):
                     "birth_year": self.user.birth_year,
                     "is_superuser": False,
                     "roles": [],
+                    "extra_demographics": None,
                 },
             ],
         )
@@ -1180,9 +1281,68 @@ class LoginLogoutTestCase(APITestCase):
         # Assert the expected behavior for the second user
         self.assertEqual(response_user2.status_code, 200)
 
-        # Cleanup: Delete the created users
-        self.user1.delete()
-        self.user2.delete()
+    def test_case_sensitive_matching_usernames(self):
+        FacilityUserFactory.create(username="shared_username", facility=self.facility)
+
+        response_user2 = self.client.post(
+            reverse("kolibri:core:session-list"),
+            data={
+                "username": "shared_username",
+                "password": DUMMY_PASSWORD,
+                "facility": self.facility.id,
+            },
+            format="json",
+        )
+
+        # Assert the expected behavior for the second user
+        self.assertEqual(response_user2.status_code, 200)
+
+        # Test no error when authentication fails
+        response_user3 = self.client.post(
+            reverse("kolibri:core:session-list"),
+            data={
+                "username": "shared_username",
+                "password": "wrong_password",
+                "facility": self.facility.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response_user3.status_code, 401)
+
+    def test_not_specified_password(self):
+        self.user.password = demographics.NOT_SPECIFIED
+        self.user.save()
+
+        response = self.client.post(
+            reverse("kolibri:core:session-list"),
+            data={
+                "username": self.user.username,
+                "facility": self.facility.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data[0]["id"], error_constants.PASSWORD_NOT_SPECIFIED)
+
+    def test_not_specified_password_os_user(self):
+        self.user.password = demographics.NOT_SPECIFIED
+        self.user.save()
+
+        OSUser.objects.create(user=self.user, os_username="os_user")
+
+        response = self.client.post(
+            reverse("kolibri:core:session-list"),
+            data={
+                "username": self.user.username,
+                "facility": self.facility.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data[0]["id"], error_constants.MISSING_PASSWORD)
 
 
 class SignUpBase(object):
@@ -1857,3 +2017,118 @@ class DuplicateUsernameTestCase(APITestCase):
             format="json",
         )
         self.assertEqual(response.data, True)
+
+
+class SetNonSpecifiedPasswordViewTestCase(APITestCase):
+    def setUp(self):
+        self.url = reverse("kolibri:core:setnonspecifiedpassword")
+        self.facility = FacilityFactory.create()
+        self.user = models.FacilityUser.objects.create(
+            username="testuser",
+            facility=self.facility,
+            password=demographics.NOT_SPECIFIED,
+        )
+
+    def test_set_non_specified_password(self):
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "password": "newpassword",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 200 OK status code
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Refresh the user object from the database
+        self.user.refresh_from_db()
+
+        # Check that the password has been updated
+        self.assertTrue(self.user.check_password("newpassword"))
+
+    def test_set_non_specified_password_invalid_facility(self):
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "password": "newpassword",
+            "facility": uuid.uuid4().hex,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 404 Not Found status code
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_set_non_specified_password_missing_facility(self):
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "password": "newpassword",
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 400 Bad Request status code
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_set_non_specified_password_invalid_username(self):
+        # Make a POST request to set the password
+        data = {
+            "username": "invalidusername",
+            "password": "newpassword",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 404 Not Found status code
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_set_non_specified_password_missing_username(self):
+        # Make a POST request to set the password
+        data = {
+            "password": "newpassword",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 400 Bad Request status code
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_set_non_specified_password_missing_password(self):
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 400 Bad Request status code
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_set_non_specified_password_password_is_specified(self):
+        self.user.set_password("password")
+        self.user.save()
+
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "password": "newpassword",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 404 Not Found status code
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_set_non_specified_password_user_is_os_user(self):
+        OSUser.objects.create(user=self.user, os_username="osuser")
+
+        # Make a POST request to set the password
+        data = {
+            "username": "testuser",
+            "password": "newpassword",
+            "facility": self.facility.id,
+        }
+        response = self.client.post(self.url, data)
+
+        # Check that the response has a 400 Bad Request status code
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

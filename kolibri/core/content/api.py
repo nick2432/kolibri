@@ -40,6 +40,7 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from kolibri.core.api import BaseValuesViewset
@@ -1392,6 +1393,7 @@ class ContentRequestViewset(ReadOnlyValuesViewset, CreateModelMixin):
     filter_backends = (DjangoFilterBackend,)
     filter_class = ContentRequestFilter
     pagination_class = OptionalPageNumberPagination
+    permission_classes = [IsAuthenticated]
 
     values = (
         "id",
@@ -1531,15 +1533,15 @@ class UserContentNodeFilter(ContentNodeFilter):
     popular = BooleanFilter(method="filter_by_popular")
 
     def filter_by_lesson(self, queryset, name, value):
-        try:
-            lesson = Lesson.objects.filter(
-                lesson_assignments__collection__membership__user=self.request.user,
-                is_active=True,
-            ).get(pk=value)
-            node_ids = list(map(lambda x: x["contentnode_id"], lesson.resources))
-            return queryset.filter(pk__in=node_ids)
-        except Lesson.DoesNotExist:
+        lesson = Lesson.objects.filter(
+            lesson_assignments__collection__membership__user=self.request.user,
+            is_active=True,
+            pk=value,
+        ).first()
+        if lesson is None:
             return queryset.none()
+        node_ids = list(map(lambda x: x["contentnode_id"], lesson.resources))
+        return queryset.filter(pk__in=node_ids)
 
     def filter_by_resume(self, queryset, name, value):
         user = self.request.user
@@ -1768,7 +1770,11 @@ class RemoteChannelViewSet(viewsets.ViewSet):
     def _make_channel_endpoint_request(
         self, identifier=None, baseurl=None, keyword=None, language=None
     ):
-
+        if baseurl is not None:
+            try:
+                validator(baseurl)
+            except ValidationError:
+                baseurl = None
         url = get_channel_lookup_url(
             identifier=identifier, baseurl=baseurl, keyword=keyword, language=language
         )

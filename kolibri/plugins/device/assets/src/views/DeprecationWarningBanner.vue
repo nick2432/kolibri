@@ -3,14 +3,14 @@
   <div
     v-show="showBanner"
     class="alert"
-    :style="{ backgroundColor: $themePalette.yellow.v_100 }"
+    :style="{ backgroundColor: $themePalette.yellow.v_200 }"
   >
     <div style="display:flex">
       <div>
         <KIcon
           icon="warning"
           class="icon"
-          :color="$themePalette.amber.v_a400"
+          :color="$themePalette.yellow.v_1100"
         />
       </div>
 

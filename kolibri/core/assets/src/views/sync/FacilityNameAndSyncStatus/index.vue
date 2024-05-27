@@ -10,7 +10,7 @@
               v-if="facility.dataset.registered"
               ref="icon"
               icon="registered"
-              :style="{ fill: $themePalette.green.v_500 }"
+              :style="{ fill: $themeTokens.success }"
             />
           </template>
         </KLabeledIcon>
@@ -76,13 +76,17 @@
 
 <script>
 
-  import { now } from 'kolibri.utils.serverClock';
+  import useNow from 'kolibri.coreVue.composables.useNow';
   import taskStrings from 'kolibri.coreVue.mixins.commonTaskStrings';
   import commonCoreStrings from 'kolibri.coreVue.mixins.commonCoreStrings';
 
   export default {
     name: 'FacilityNameAndSyncStatus',
     mixins: [taskStrings, commonCoreStrings],
+    setup() {
+      const { now } = useNow();
+      return { now };
+    },
     props: {
       facility: {
         type: Object,
@@ -104,11 +108,6 @@
         type: Object,
         required: true,
       },
-    },
-    data() {
-      return {
-        now: now(),
-      };
     },
     computed: {
       syncFailed() {

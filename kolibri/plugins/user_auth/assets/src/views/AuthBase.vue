@@ -2,13 +2,13 @@
 
   <div class="fh">
     <div class="wrapper-table">
-      <div class="main-row table-row" :style="backgroundImageStyle">
+      <div class="main-row table-row">
         <div class="main-cell table-cell">
           <!-- remote access disabled -->
           <div
             v-if="!$store.getters.allowAccess"
             class="box"
-            :style="{ backgroundColor: $themePalette.grey.v_100 }"
+            :style="{ backgroundColor: $themeTokens.surface }"
           >
             <CoreLogo
               v-if="themeConfig.signIn.topLogo"
@@ -20,7 +20,7 @@
             <h1
               v-if="themeConfig.signIn.showTitle"
               class="kolibri-title"
-              :style="[ { color: $themeBrand.primary.v_300 }, themeConfig.signIn.titleStyle]"
+              :style="[ { color: $themeTokens.primary }, themeConfig.signIn.titleStyle]"
             >
               {{ logoText }}
             </h1>
@@ -30,7 +30,7 @@
             <p>{{ $tr('restrictedAccessDescription') }}</p>
           </div>
           <!-- remote access enabled -->
-          <div v-else class="box" :style="{ backgroundColor: $themePalette.grey.v_100 }">
+          <div v-else class="box" :style="{ backgroundColor: $themeTokens.surface }">
             <CoreLogo
               v-if="themeConfig.signIn.topLogo"
               class="logo"
@@ -41,7 +41,7 @@
             <h1
               v-if="themeConfig.signIn.showTitle"
               class="kolibri-title"
-              :style="[ { color: $themeBrand.primary.v_300 }, themeConfig.signIn.titleStyle]"
+              :style="[ { color: $themeTokens.primary }, themeConfig.signIn.titleStyle]"
             >
               {{ logoText }}
             </h1>
@@ -92,6 +92,7 @@
               />
             </p>
           </div>
+          <div class="background" :style="backgroundImageStyle" aria-hidden="true"></div>
         </div>
       </div>
       <div class="table-row">
@@ -113,9 +114,11 @@
             />
             <template v-if="themeConfig.signIn.backgroundImgCredit">
               <span> • </span>
-              {{ $tr('photoCreditLabel', {
-                photoCredit: themeConfig.signIn.backgroundImgCredit
-              }) }}
+              <span>
+                {{ $tr('photoCreditLabel', {
+                  photoCredit: themeConfig.signIn.backgroundImgCredit
+                }) }}
+              </span>
             </template>
           </div>
         </div>
@@ -197,16 +200,17 @@
       ...mapGetters(['facilityConfig']),
       backgroundImageStyle() {
         if (this.themeConfig.signIn.background) {
-          const scrimOpacity =
-            this.themeConfig.signIn.scrimOpacity !== undefined
-              ? this.themeConfig.signIn.scrimOpacity
-              : 0.7;
+          const scrimOpacity = this.themeConfig.signIn.scrimOpacity;
           return {
             backgroundColor: this.$themeTokens.primary,
             backgroundImage: `linear-gradient(rgba(0, 0, 0, ${scrimOpacity}), rgba(0, 0, 0, ${scrimOpacity})), url(${this.themeConfig.signIn.background})`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            backgroundSize: 'cover',
+            filter: 'blur(2px)',
           };
         }
-        return { backgroundColor: this.$themeBrand.primary.v_900 };
+        return { backgroundColor: this.$themeBrand.primary.v_800 };
       },
       guestURL() {
         return urls['kolibri:core:guest']();
@@ -317,14 +321,15 @@
   }
 
   .table-row {
+    position: relative;
+    z-index: 1;
     display: table-row;
+    // Do this to mitigate issues with just using z-index on Safari.
+    transform: translateZ(1px);
   }
 
   .main-row {
     text-align: center;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: cover;
   }
 
   .table-cell {
@@ -336,9 +341,22 @@
     vertical-align: middle;
   }
 
+  .background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+  }
+
   .box {
     @extend %dropshadow-16dp;
 
+    position: relative;
+    z-index: 1;
     width: 360px;
     padding: 32px;
     margin: 16px auto;

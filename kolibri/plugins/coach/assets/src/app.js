@@ -3,10 +3,10 @@ import useUser from 'kolibri.coreVue.composables.useUser';
 import redirectBrowser from 'kolibri.utils.redirectBrowser';
 import { setChannelInfo } from 'kolibri.coreVue.vuex.actions';
 import router from 'kolibri.coreVue.router';
-import PageRoot from 'kolibri.coreVue.components.PageRoot';
 import KolibriApp from 'kolibri_app';
 import routes from './routes';
 import pluginModule from './modules/pluginModule';
+import pages from './views/reports/allReportsPages';
 
 class CoachToolsModule extends KolibriApp {
   get stateSetters() {
@@ -14,9 +14,6 @@ class CoachToolsModule extends KolibriApp {
   }
   get routes() {
     return routes;
-  }
-  get RootVue() {
-    return PageRoot;
   }
   get pluginModule() {
     return pluginModule;
@@ -28,7 +25,12 @@ class CoachToolsModule extends KolibriApp {
         redirectBrowser();
         return;
       }
-      this.store.dispatch('loading');
+
+      const skipLoading = [pages.ReportsQuizLearnerPage.name];
+
+      if (!skipLoading.includes(to.name)) {
+        this.store.dispatch('loading');
+      }
       const promises = [];
       // Clear the snackbar at every navigation to prevent it from re-appearing
       // when the next page component mounts.

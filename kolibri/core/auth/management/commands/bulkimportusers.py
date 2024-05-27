@@ -250,13 +250,14 @@ class Validator(object):
     Class to apply different validation checks on a CSV data reader.
     """
 
-    def __init__(self, header_translation):
+    def __init__(self, header_translation, facility):
         self._checks = []
         self.classrooms = {}
         self.coach_classrooms = {}
         self.users = {}
         self.header_translation = header_translation
         self.roles = {r: [] for r in roles_map.values() if r is not None}
+        self.facility = facility
 
     def add_check(self, header_name, check, message):
         """
@@ -275,7 +276,7 @@ class Validator(object):
 
         # Check if a user with the provided username exists (case-insensitive)
         existing_user = FacilityUser.objects.filter(
-            username__iexact=lowercase_username
+            username__iexact=lowercase_username, facility=self.facility
         ).first()
         # Convert existing keys in self.users to lowercase
         if existing_user and uuid == "":
@@ -408,9 +409,9 @@ class Command(AsyncCommand):
             help="File to store errors output (to be used in internal tests only)",
         )
 
-    def csv_values_validation(self, reader, header_translation):
+    def csv_values_validation(self, reader, header_translation, facility):
         per_line_errors = []
-        validator = Validator(header_translation)
+        validator = Validator(header_translation, facility)
         validator.add_check("UUID", valid_uuid(), MESSAGES[INVALID_UUID])
         validator.add_check(
             "FULL_NAME", value_length(125), MESSAGES[TOO_LONG].format("FULL_NAME")
@@ -546,7 +547,7 @@ class Command(AsyncCommand):
                     setattr(user_obj, field, values[field])
         return changed
 
-    def build_users_objects(self, users):
+    def build_users_objects(self, users):  # noqa C901
         new_users = []
         update_users = []
         keeping_users = []
@@ -576,7 +577,7 @@ class Command(AsyncCommand):
                 if user_obj.username != user:
                     # check for duplicated username in the facility
                     existing_user = FacilityUser.objects.get(
-                        username=user, facility=self.default_facility
+                        username__iexact=user, facility=self.default_facility
                     )
                     if existing_user:
                         error = {
@@ -591,6 +592,21 @@ class Command(AsyncCommand):
                 if self.compare_fields(user_obj, values):
                     update_users.append(user_obj)
             else:
+                # If UUID is not specified, check for a username clash
+                if values["uuid"] == "":
+                    existing_user = FacilityUser.objects.filter(
+                        username__iexact=user, facility=self.default_facility
+                    ).first()
+                    if existing_user:
+                        error = {
+                            "row": users[user]["position"],
+                            "username": user,
+                            "message": MESSAGES[DUPLICATED_USERNAME],
+                            "field": "USERNAME",
+                            "value": user,
+                        }
+                        per_line_errors.append(error)
+                        continue
                 if values["uuid"] != "":
                     error = {
                         "row": users[user]["position"],
@@ -875,7 +891,7 @@ class Command(AsyncCommand):
                 with csv_file as f:
                     reader = csv.DictReader(f, strict=True)
                     per_line_errors, classes, users, roles = self.csv_values_validation(
-                        reader, self.header_translation
+                        reader, self.header_translation, self.default_facility
                     )
             except (ValueError, FileNotFoundError, csv.Error) as e:
                 self.append_error(MESSAGES[FILE_READ_ERROR].format(e))

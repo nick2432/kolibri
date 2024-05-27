@@ -1,6 +1,6 @@
 <template>
 
-  <span>
+  <span :style="{ display: 'flex', alignItems: 'center' }">
     <KCircularLoader
       v-if="syncInProgress"
       :size="20"
@@ -21,11 +21,15 @@
 
 <script>
 
-  import { now } from 'kolibri.utils.serverClock';
+  import useNow from 'kolibri.coreVue.composables.useNow';
   import { SyncStatus } from 'kolibri.coreVue.vuex.constants';
 
   export default {
     name: 'SyncStatusDisplay',
+    setup() {
+      const { now } = useNow();
+      return { now };
+    },
     props: {
       syncStatus: {
         type: String,
@@ -42,11 +46,6 @@
           return ['small', 'large', 'large-bold'].includes(val);
         },
       },
-    },
-    data() {
-      return {
-        now: now(),
-      };
     },
     computed: {
       syncTextDisplayMap() {
@@ -135,6 +134,7 @@
   .inline-loader {
     display: inline-block;
     margin-right: 8px;
+    margin-left: 0;
     vertical-align: bottom;
   }
 
@@ -146,6 +146,7 @@
   .small {
     display: inline-block;
     margin-top: 0;
+    margin-bottom: 0;
     font-size: 11px;
   }
 

@@ -413,6 +413,7 @@ class FacilityUserViewSet(ValuesViewset):
         "id_number",
         "gender",
         "birth_year",
+        "extra_demographics",
     )
 
     field_map = {
@@ -853,7 +854,7 @@ class SetNonSpecifiedPasswordView(views.APIView):
         except (ValueError, ObjectDoesNotExist):
             raise Http404(error_message)
 
-        if user.password != NOT_SPECIFIED:
+        if user.password != NOT_SPECIFIED or hasattr(user, "os_user"):
             raise Http404(error_message)
 
         user.set_password(password)
@@ -890,7 +891,23 @@ class SessionViewSet(viewsets.ViewSet):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Find the FacilityUser we're looking for use later on
+        user = None
+        if interface.enabled and valid_app_key_on_request(request):
+            # If we are in app context, then try to get the automatically created OS User
+            # if it matches the username, without needing a password.
+            user = self._check_os_user(request, username)
+        if user is None:
+            # Otherwise attempt full authentication
+            user = authenticate(
+                username=username, password=password, facility=facility_id
+            )
+        if user is not None and user.is_active:
+            # Correct password, and the user is marked "active"
+            login(request, user)
+            # Success!
+            return self.get_session_response(request)
+        # Otherwise, try to give a helpful error message
+        # Find the FacilityUser we're looking for
         try:
             unauthenticated_user = FacilityUser.objects.get(
                 username__iexact=username, facility=facility_id
@@ -910,28 +927,17 @@ class SessionViewSet(viewsets.ViewSet):
             )
         except FacilityUser.MultipleObjectsReturned:
             # Handle case of multiple matching usernames
-            unauthenticated_user = FacilityUser.objects.get(
+            unauthenticated_user = FacilityUser.objects.filter(
                 username__exact=username, facility=facility_id
-            )
-        user = None
-        if interface.enabled and valid_app_key_on_request(request):
-            # If we are in app context, then try to get the automatically created OS User
-            # if it matches the username, without needing a password.
-            user = self._check_os_user(request, username)
-        if user is None:
-            # Otherwise attempt full authentication
-            user = authenticate(
-                username=username, password=password, facility=facility_id
-            )
-        if user is not None and user.is_active:
-            # Correct password, and the user is marked "active"
-            login(request, user)
-            # Success!
-            return self.get_session_response(request)
-        if unauthenticated_user.password == NOT_SPECIFIED:
+            ).first()
+        if unauthenticated_user.password == NOT_SPECIFIED and not hasattr(
+            unauthenticated_user, "os_user"
+        ):
             # Here - we have a Learner whose password is "NOT_SPECIFIED" because they were created
             # while the "Require learners to log in with password" setting was disabled - but now
             # it is enabled again.
+            # Alternatively, they may have been created as an OSUser for automatic login with an
+            # authentication token. If this is the case, then we do not allow for the password to be set.
             return Response(
                 [
                     {

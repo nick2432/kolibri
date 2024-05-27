@@ -185,7 +185,7 @@
               ref="closeButton"
               tabindex="0"
               icon="close"
-              :color="$themeTokens.textInverted"
+              :color="$themeTokens.text"
               class="side-nav-header-icon"
               :ariaLabel="$tr('closeNav')"
               size="large"
@@ -193,7 +193,7 @@
             />
             <span
               class="side-nav-header-name"
-              :style="{ color: $themeTokens.textInverted }"
+              :style="{ color: $themeTokens.text }"
             >{{ sideNavTitleText }}</span>
           </div>
         </FocusTrap>
@@ -565,6 +565,7 @@
     padding-top: 4px;
     overflow: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
   }
 
   .bottom-nav-scrollable-area {

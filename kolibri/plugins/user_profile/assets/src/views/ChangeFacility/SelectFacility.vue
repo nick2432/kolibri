@@ -23,7 +23,7 @@
       <KRadioButton
         :key="f.id"
         v-model="selectedFacilityId"
-        :value="f.id"
+        :buttonValue="f.id"
         :label="formatNameAndId(f.name, f.id)"
         :disabled="facilityDisabled(f)"
       />
@@ -33,7 +33,7 @@
       :style="{
         marginTop: '34px',
         paddingTop: '10px',
-        borderTop: `1px solid ${$themePalette.grey.v_300}`
+        borderTop: `1px solid ${$themeTokens.fineLine}`
       }"
     >
 

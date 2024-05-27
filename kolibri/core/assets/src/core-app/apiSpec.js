@@ -17,7 +17,7 @@ import vuex from 'vuex';
 import UiAlert from 'kolibri-design-system/lib/keen/UiAlert';
 import responsiveWindowMixin from 'kolibri-design-system/lib/KResponsiveWindowMixin';
 import responsiveElementMixin from 'kolibri-design-system/lib/KResponsiveElementMixin';
-import useKResponsiveWindow from 'kolibri-design-system/lib/useKResponsiveWindow';
+import useKResponsiveWindow from 'kolibri-design-system/lib/composables/useKResponsiveWindow';
 import useKShow from 'kolibri-design-system/lib/composables/useKShow';
 import UiIconButton from 'kolibri-design-system/lib/keen/UiIconButton'; // temp hack
 import * as vueCompositionApi from '@vue/composition-api';
@@ -45,7 +45,6 @@ import CoreLogo from '../views/CoreLogo';
 import LanguageSwitcherList from '../views/language-switcher/LanguageSwitcherList';
 import LanguageSwitcherModal from '../views/language-switcher/LanguageSwitcherModal';
 import ElapsedTime from '../views/ElapsedTime';
-import PointsIcon from '../views/PointsIcon';
 import TotalPoints from '../views/TotalPoints';
 import AuthMessage from '../views/AuthMessage';
 import FilterTextbox from '../views/FilterTextbox';
@@ -102,11 +101,11 @@ import LearnOnlyDeviceNotice from '../views/LearnOnlyDeviceNotice';
 import themeConfig from '../styles/themeConfig';
 import sortLanguages from '../utils/sortLanguages';
 import * as sync from '../views/sync/syncComponentSet';
-import PageRoot from '../views/PageRoot';
 import NotificationsRoot from '../views/NotificationsRoot';
 import useMinimumKolibriVersion from '../composables/useMinimumKolibriVersion';
 import useUserSyncStatus from '../composables/useUserSyncStatus';
 import useUser from '../composables/useUser';
+import useNow from '../composables/useNow';
 
 // webpack optimization
 import CoreInfoIcon from '../views/CoreInfoIcon';
@@ -169,7 +168,6 @@ export default {
       LanguageSwitcherModal,
       LanguageSwitcherList,
       ElapsedTime,
-      PointsIcon,
       TotalPoints,
       AuthMessage,
       FilterTextbox,
@@ -211,7 +209,6 @@ export default {
       PrivacyLinkAndModal,
       LearnOnlyDeviceNotice,
       SuggestedTime,
-      PageRoot,
       MasteryModel,
       NotificationsRoot,
       KolibriLoadingSnippet,
@@ -232,6 +229,7 @@ export default {
       useKResponsiveWindow,
       useKShow,
       useMinimumKolibriVersion,
+      useNow,
       useUser,
       useUserSyncStatus,
     },
